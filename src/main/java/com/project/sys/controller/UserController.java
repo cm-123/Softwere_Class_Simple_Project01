@@ -1,11 +1,16 @@
 package com.project.sys.controller;
 
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.project.common.vo.Result;
 import com.project.sys.entity.User;
 import com.project.sys.service.IUserService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.servlet.view.InternalResourceViewResolver;
 
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -35,6 +40,9 @@ public class UserController {
 
     @Autowired
     private IUserService iUserService;
+
+    @Autowired
+    private PasswordEncoder passwordEncoder;
 
     @GetMapping("/all")
     public Result<List<User>> getAllUser(){
@@ -67,6 +75,54 @@ public class UserController {
         return Result.success("注销成功");
     }
 
+    @GetMapping("/list")
+    public Result<?> getUserListPage(@RequestParam(value = "username",required = false) String username,
+                                     @RequestParam(value = "phone",required = false)String phone,
+                                     @RequestParam(value = "pageNo",required = false)Long pageNo,
+                                     @RequestParam(value = "pageSize",required = false)Long pageSize){
+        LambdaQueryWrapper<User> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(username != null,User::getUsername,username);
+        wrapper.eq(phone != null,User::getPhone,phone);
+        wrapper.orderByDesc(User::getId);
+
+        Page<User> page = new Page<>(pageNo, pageSize);
+        iUserService.page(page,wrapper);
+
+        Map<String ,Object> data =  new HashMap<>();
+        data.put("total",page.getTotal());
+        data.put("rows",page.getRecords());
+
+
+        return Result.success(data);
+
+    }
+
+
+    @PostMapping
+    public  Result<?> addUser(@RequestBody User user){
+        user.setPassword(passwordEncoder.encode(user.getPassword()));
+        iUserService.save(user);
+        return Result.success("新增用户成功");
+    }
+
+    @PutMapping
+    public  Result<?> updateUser(@RequestBody User user){
+        user.setPassword(null);
+        iUserService.updateById(user);
+        return Result.success("修改用户数据成功");
+    }
+
+    @GetMapping("/{id}")
+    public Result<User> getUserById(@PathVariable("id") Integer id){
+        User user = iUserService.getById(id);
+        return Result.success(user);
+    }
+
+    @DeleteMapping("/{id}")
+    public Result<?> deleteUserById(@PathVariable("id") Integer id){
+        iUserService.removeById(id);
+        return Result.success("删除用户成功");
+    }
 
 }
 

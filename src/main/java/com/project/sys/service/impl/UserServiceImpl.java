@@ -8,6 +8,7 @@ import com.project.sys.service.IUserService;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.redis.core.RedisTemplate;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import java.util.HashMap;
@@ -29,6 +30,9 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements IU
 
     @Autowired
     private RedisTemplate redisTemplate;
+    @Autowired
+    private PasswordEncoder passwordEncoder;
+
 
     @Override
     public Map<String, Object> login(User user) {
@@ -37,10 +41,9 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements IU
         //根据用户名和密码查询
         LambdaQueryWrapper<User> queryWrapper = new LambdaQueryWrapper<>();
         queryWrapper.eq(User::getUsername, user.getUsername());
-        queryWrapper.eq(User::getPassword, user.getPassword());
         User loginUser =this.baseMapper.selectOne(queryWrapper);
-        //结果不为空,则生成token ,将用户信息存放在redis
-        if (loginUser != null) {
+        //结果不为空,并且密码和传入的密码匹配,则生成token ,将用户信息存放在redis
+        if (loginUser != null && passwordEncoder.matches(user.getPassword(),loginUser.getPassword())) {
             //暂时用UUID,终极方案jwt
             String key = "user:" + UUID.randomUUID();
 
